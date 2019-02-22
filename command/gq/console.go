@@ -2,17 +2,12 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/dsoprea/go-geographic-index"
 	"github.com/dsoprea/go-logging"
-)
-
-var (
-	ErrNotFound = errors.New("not found")
 )
 
 func runConsole(ti *geoindex.TimeIndex, gi *geoindex.GeographicIndex, arguments *parameters) (err error) {
@@ -67,81 +62,4 @@ func runConsole(ti *geoindex.TimeIndex, gi *geoindex.GeographicIndex, arguments 
 	}
 
 	return nil
-}
-
-func runLocationQuery(gi *geoindex.GeographicIndex, q LocationQuery, arguments *parameters, g *Geocoder) (results *QueryResults, err error) {
-	defer func() {
-		if state := recover(); state != nil {
-			err = log.Wrap(state.(error))
-		}
-	}()
-
-	geographicResults, err := gi.GetWithCoordinatesMetroLimited(q.Latitude, q.Longitude)
-	if err != nil {
-		if err == geoindex.ErrNoNearMatch {
-			return nil, ErrNotFound
-		}
-
-		log.Panic(err)
-	}
-
-	results = NewQueryResults()
-	for _, gr := range geographicResults {
-		qr := &QueryResult{
-			gr: gr,
-		}
-
-		if arguments.DoReverseGeocode == true && isGeocodeSupported() == true {
-			place, err := g.getAddressForCoordinates(gr.Latitude, gr.Longitude)
-			log.PanicIf(err)
-
-			qr.p = place
-		}
-
-		results.Add(qr)
-	}
-
-	return results, nil
-}
-
-func runTimeQuery(ti *geoindex.TimeIndex, q TimeQuery, arguments *parameters, g *Geocoder) (results *QueryResults, err error) {
-	defer func() {
-		if state := recover(); state != nil {
-			err = log.Wrap(state.(error))
-		}
-	}()
-
-	ts := ti.Series()
-	i := ts.Search(q.Timestamp)
-
-	if i >= len(ts) {
-		fmt.Printf("No record found for: [%s] (1)\n", q.Timestamp)
-		return nil, ErrNotFound
-	}
-
-	result := ts[i]
-	if result.Time != q.Timestamp {
-		fmt.Printf("No record found for: [%s] (2)\n", q.Timestamp)
-		return nil, ErrNotFound
-	}
-
-	results = NewQueryResults()
-	for _, o := range result.Items {
-		gr := o.(*geoindex.GeographicRecord)
-
-		qr := &QueryResult{
-			gr: gr,
-		}
-
-		if arguments.DoReverseGeocode == true && isGeocodeSupported() == true {
-			place, err := g.getAddressForCoordinates(gr.Latitude, gr.Longitude)
-			log.PanicIf(err)
-
-			qr.p = place
-		}
-
-		results.Add(qr)
-	}
-
-	return results, nil
 }

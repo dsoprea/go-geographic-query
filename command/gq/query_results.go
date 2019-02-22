@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/dsoprea/go-geographic-index"
 )
@@ -14,13 +15,24 @@ var (
 type QueryResult struct {
 	gr *geoindex.GeographicRecord
 	p  Place
+
+	// originalTimestamp is an optional, original timestamp before any rounding
+	// was employed in the search.
+	originalTimestamp time.Time
 }
 
 func (qr *QueryResult) String() string {
-	description := fmt.Sprintf("%s (%.6f, %.6f)", qr.gr.Timestamp, qr.gr.Latitude, qr.gr.Longitude)
+	timestampPhrase := ""
+	if qr.originalTimestamp.IsZero() == true {
+		timestampPhrase = fmt.Sprintf("%s", qr.gr.Timestamp)
+	} else {
+		timestampPhrase = fmt.Sprintf("%s\t[<-%s]", qr.gr.Timestamp, qr.originalTimestamp)
+	}
+
+	description := fmt.Sprintf("%s\t(%.6f,%.6f)", timestampPhrase, qr.gr.Latitude, qr.gr.Longitude)
 
 	if qr.p != NoPlace {
-		description = fmt.Sprintf("%s: %s", description, qr.p)
+		description = fmt.Sprintf("%s\t%s", description, qr.p)
 	}
 
 	return description
@@ -34,6 +46,10 @@ func NewQueryResults() *QueryResults {
 	return &QueryResults{
 		results: make([]*QueryResult, 0),
 	}
+}
+
+func (results *QueryResults) Results() []*QueryResult {
+	return results.results
 }
 
 func (results *QueryResults) Add(qr *QueryResult) {

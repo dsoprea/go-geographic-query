@@ -11,12 +11,16 @@ import (
 )
 
 type parameters struct {
-	Paths            []string `short:"p" long:"path" description:"Path to recursively process (can be provided zero or more times)"`
-	Filepaths        []string `short:"f" long:"filepath" description:"File-path (can be provided zero or more times)"`
-	TimestampQueries []string `short:"t" long:"timestamp" description:"Timestamp query (formatted as RFC3339); can be provided zero or more times)"`
-	LocationQueries  []string `short:"l" long:"location" description:"Location query (can be provided zero or more times)"`
-	DoReverseGeocode bool     `short:"g" long:"reverse-geocode" description:"Reverse-geocode coordinates to an address (set GOOGLE_API_KEY to your Google API-key)"`
-	Verbose          bool     `short:"v" long:"verbose" description:"Print logging"`
+	Paths                       []string `short:"p" long:"path" description:"Path to recursively process GPS data from (can be provided zero or more times)"`
+	Filepaths                   []string `short:"f" long:"filepath" description:"File-path to read GPS data from (can be provided zero or more times)"`
+	TimestampQueries            []string `short:"t" long:"timestamp" description:"Timestamp query (formatted as RFC3339); can be provided zero or more times)"`
+	LocationQueries             []string `short:"l" long:"location" description:"Location query (can be provided zero or more times)"`
+	DoReverseGeocode            bool     `short:"g" long:"reverse-geocode" description:"Reverse-geocode coordinates to an address (set GOOGLE_API_KEY to your Google API-key)"`
+	Verbose                     bool     `short:"v" long:"verbose" description:"Print logging"`
+	ImagePath                   string   `short:"i" long:"image-path" description:"Path to walk for images and match with coordinates"`
+	DoWalkImagePathsRecursively bool     `short:"r" long:"recursive-image-walk" description:"Recursively walk image path"`
+	ShowImageSkips              bool     `short:"s" long:"show-image-skips" description:"Show images that are skipped"`
+	ShowNearestImageTimes       bool     `short:"n" long:"show-nearest-image-times" description:"Show the datapoint times that were found when searching images in addition to the image times"`
 }
 
 var (
@@ -44,6 +48,11 @@ func main() {
 	}
 
 	if arguments.Verbose == true {
+		scp := log.NewStaticConfigurationProvider()
+		scp.SetLevelName(log.LevelNameDebug)
+
+		log.LoadConfiguration(scp)
+
 		cla := log.NewConsoleLogAdapter()
 		log.AddAdapter("console", cla)
 	}
@@ -72,6 +81,14 @@ func main() {
 	}
 
 	g := NewGeocoder()
+
+	if arguments.ImagePath != "" {
+		iw := NewImageWalk(arguments, g, ti, arguments.ImagePath)
+		iw.Walk()
+
+		os.Exit(0)
+	}
+
 	results := NewQueryResults()
 
 	if len(arguments.TimestampQueries) > 0 {
@@ -83,7 +100,7 @@ func main() {
 
 			currentResults, err := runTimeQuery(ti, tq, arguments, g)
 			if err == nil {
-				for _, qr := range currentResults.results {
+				for _, qr := range currentResults.Results() {
 					results.Add(qr)
 				}
 			} else if err != ErrNotFound {
@@ -102,7 +119,7 @@ func main() {
 
 			currentResults, err := runLocationQuery(gi, lq, arguments, g)
 			if err == nil {
-				for _, qr := range currentResults.results {
+				for _, qr := range currentResults.Results() {
 					results.Add(qr)
 				}
 			} else if err != ErrNotFound {
