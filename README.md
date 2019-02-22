@@ -13,7 +13,16 @@ This tool provides an array of functionalities for efficiently querying raw GPS 
 - Most lookups are cached for the current session.
 
 
+# Getting
+
+```
+$ go get -t github.com/dsoprea/go-geographic-query
+```
+
+
 # Examples
+
+These examples were [obviously] run directly from "$GOPATH/github.com/dsoprea/go-geographic-query/command/gq".
 
 Simple query with a single timestamp:
 
